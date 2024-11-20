@@ -3,19 +3,14 @@ import pandas as pd
 import re
 
 # Set the page title
-st.title("Enhanced Rule-Based Page Categorization Tool")
+st.title("URL-Based Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
-This tool categorizes pages based on predefined rules and URL patterns, such as detecting `/blog` for Blog Pages or `/property` for Property Pages.  
-
-⚡ **Features**  
-- Detects duplicates (e.g., `http vs https`, `www vs non-www`).  
-- Identifies parameterized or long URLs.  
-- Enhanced rules for Property Pages, MLS Pages, Agent Pages, and more.
+This tool categorizes pages solely based on URL patterns, such as detecting `/blog` for Blog Pages or `/property` for Property Pages.  
 
 ⚡ **How to Use It:**  
-1. Upload `pages.csv` containing at least a `URL` column.  
+1. Upload `pages.csv` containing a single column: `URL`.  
 2. Click **"Categorize Pages"** to start the process.  
 3. Download the categorized results as a CSV.
 
@@ -33,7 +28,7 @@ This tool categorizes pages based on predefined rules and URL patterns, such as 
 """)
 
 # Step 1: Upload Pages File
-uploaded_file = st.file_uploader("Upload your pages.csv file", type="csv")
+uploaded_file = st.file_uploader("Upload your pages.csv file (must contain a 'URL' column)", type="csv")
 
 if uploaded_file:
     # Step 2: Load Pages Data
