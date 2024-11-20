@@ -7,7 +7,7 @@ st.title("Enhanced URL-Based Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
-This tool categorizes pages solely based on URL patterns, with improved distinctions between Property Pages and MLS Pages.
+This tool categorizes pages solely based on URL patterns, with improved distinctions between Property Pages and MLS Pages, and processes duplicate rules last.
 
 ⚡ **How to Use It:**  
 1. Upload `pages.csv` containing a single column: `URL`.  
@@ -15,15 +15,15 @@ This tool categorizes pages solely based on URL patterns, with improved distinct
 3. Download the categorized results as a CSV.
 
 ⚡ **Predefined Categories**  
-- **Property Pages**: URLs containing `/property` or single listings.  
-- **MLS Pages**: URLs with `/homes-for-sale`, `/listings`, or commercial intent patterns.  
+- **Property Pages**: URLs containing specific listings (e.g., `/property/123`, `/listings/single`).  
+- **MLS Pages**: URLs with broader search patterns (e.g., `/homes-for-sale`, `/listings`, `/by-price`).  
 - **Agent Pages**: URLs with `/agents`, `/team`, or names (e.g., `/john-doe`).  
 - **Blog Pages**: URLs with `/blog`.  
-- **CMS Pages**: Generic pages like `/about`, `/contact`, `/testimonials`.  
-- **Neighborhood Pages**: URLs referencing specific locations or communities.  
+- **CMS Pages**: Generic or non-duplicate root-level pages (e.g., `/about`, `/contact`, `/careers`).  
+- **Neighborhood Pages**: URLs referencing locations or communities.  
 - **Pagination**: URLs indicating `page=2` or `/page/2`.  
 - **Parameters**: URLs with query parameters (e.g., `?city=`).  
-- **Duplicates**: `http vs https` or `www vs non-www` (processed last).  
+- **Duplicates**: `http vs https` or `www vs Non-www` (processed last).  
 - **Fallback**: Uncategorized if no rules match.  
 """)
 
@@ -40,8 +40,8 @@ if uploaded_file:
 
         # Step 3: Define Categorization Rules
         def categorize_url(url):
-            # Predefined rules
-            if "/property/" in url or re.search(r"/listings/\d+", url):
+            # Step 3.1: Primary Categories
+            if re.search(r"/property/\d+|/listings/\w+", url):
                 return "Property Pages"
             elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
                 return "MLS Pages"
@@ -49,7 +49,7 @@ if uploaded_file:
                 return "Agent Pages"
             elif "/blog" in url:
                 return "Blog Pages"
-            elif re.search(r"/about|/contact|/testimonials|/compare", url):
+            elif re.search(r"/about|/contact|/testimonials|/careers|/compare", url) or re.match(r"^https?://[^/]+/?$", url):
                 return "CMS Pages"
             elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
                 return "Neighborhood Pages"
@@ -57,10 +57,14 @@ if uploaded_file:
                 return "Pagination"
             elif "?" in url:
                 return "Parameters"
+
+            # Step 3.2: Duplicate Rules (Processed Last)
             elif re.match(r"^http://", url):
                 return "Duplicates: http vs https"
             elif re.match(r"^https?://www\.", url) or re.match(r"^https?://[^www]\.", url):
                 return "Duplicates: www vs Non-www"
+
+            # Step 3.3: Fallback
             elif len(url) > 100:
                 return "Long URLs"
             else:
