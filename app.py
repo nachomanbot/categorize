@@ -5,61 +5,105 @@ from sentence_transformers import SentenceTransformer
 import faiss
 
 # Set the page title
-st.title("AI-Powered Redirect Mapping Tool")
+st.title("Page Categorization Tool with Preloaded Categories")
 
-# Step 1: Upload Files
-st.header("Upload Files")
-uploaded_origin = st.file_uploader("Upload origin.csv", type="csv")
-uploaded_destination = st.file_uploader("Upload destination.csv", type="csv")
+st.markdown("""
+👉🏼 **What It Does**  
+This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity.
 
-if uploaded_origin and uploaded_destination:
-    origin_df = pd.read_csv(uploaded_origin)
-    destination_df = pd.read_csv(uploaded_destination)
+👉🏼 **Preloaded Categories**  
+- Agent Pages  
+- Blog Pages  
+- CMS Pages  
+- Development Pages  
+- Neighborhood Pages  
+- Property Pages  
+- Press Pages  
+- MLS Pages  
+- Pages with Parameters  
+- Pagination  
+- Duplicates: http vs. https  
+- Duplicates: / vs. Non-/  
+- Duplicates: www vs. Non-www  
+- Duplicates: Hashes/Tokens  
+- Blog Filters like Tag pages and Category pages  
+- Long URLs  
 
-    st.success("Files uploaded successfully!")
+👉🏼 **How to Use It:**  
+1. Upload `pages.csv` containing the pages to categorize.  
+2. Click **"Categorize Pages"** to start the process.  
+3. Download the categorized results as a CSV.
+
+👉🏼 **Note:**  
+- Ensure the `pages.csv` file is in `.csv` format with relevant metadata columns.
+""")
+
+# Preloaded categories
+CATEGORIES = [
+    "Agent Pages",
+    "Blog Pages",
+    "CMS Pages",
+    "Development Pages",
+    "Neighborhood Pages",
+    "Property Pages",
+    "Press Pages",
+    "MLS Pages",
+    "Pages with Parameters",
+    "Pagination",
+    "Duplicates: http vs. https",
+    "Duplicates: / vs. Non-/",
+    "Duplicates: www vs. Non-www",
+    "Duplicates: Hashes/Tokens",
+    "Blog Filters like Tag pages and Category pages",
+    "Long URLs"
+]
+
+# Step 1: Upload Pages File
+st.header("Upload Your Pages File")
+uploaded_pages = st.file_uploader("Upload pages.csv", type="csv")
+
+if uploaded_pages:
+    st.success("File uploaded successfully!")
     
-    # Step 2: Column Selection
-    st.header("Select Columns for Similarity Matching")
-    common_columns = list(set(origin_df.columns) & set(destination_df.columns))
-    selected_columns = st.multiselect("Choose columns for matching", common_columns)
+    # Step 2: Load Pages Data
+    pages_df = pd.read_csv(uploaded_pages)
 
-    if selected_columns:
-        # Step 3: Perform Matching
-        st.header("Running Matching Process")
-        origin_df['combined_text'] = origin_df[selected_columns].fillna('').apply(lambda x: ' '.join(x), axis=1)
-        destination_df['combined_text'] = destination_df[selected_columns].fillna('').apply(lambda x: ' '.join(x), axis=1)
+    # Combine all text columns for similarity matching
+    pages_df['combined_text'] = pages_df.fillna('').apply(lambda x: ' '.join(x.astype(str)), axis=1)
 
-        # Load pre-trained model
-        st.info("Loading pre-trained model...")
+    # Step 3: Categorize Pages
+    if st.button("Categorize Pages"):
+        st.info("Processing data... This may take a while.")
+
+        # Step 4: Generate Embeddings for Pages and Categories
         model = SentenceTransformer('all-MiniLM-L6-v2')
 
-        # Vectorize text
-        st.info("Generating embeddings...")
-        origin_embeddings = model.encode(origin_df['combined_text'].tolist(), show_progress_bar=True)
-        destination_embeddings = model.encode(destination_df['combined_text'].tolist(), show_progress_bar=True)
+        # Generate embeddings for pages
+        pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
 
-        # Create FAISS index
-        dimension = origin_embeddings.shape[1]
+        # Generate embeddings for preloaded categories
+        category_embeddings = model.encode(CATEGORIES, show_progress_bar=True)
+
+        # Create a FAISS index for categories
+        dimension = category_embeddings.shape[1]
         faiss_index = faiss.IndexFlatL2(dimension)
-        faiss_index.add(destination_embeddings.astype('float32'))
+        faiss_index.add(category_embeddings.astype('float32'))
 
-        # Perform search
-        D, I = faiss_index.search(origin_embeddings.astype('float32'), k=1)
-        similarity_scores = 1 - (D / np.max(D))
+        # Match pages to categories
+        D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
 
-        # Prepare output
-        matches_df = pd.DataFrame({
-            'origin_url': origin_df['Address'],
-            'matched_url': destination_df['Address'].iloc[I.flatten()].values,
-            'similarity_score': np.round(similarity_scores.flatten(), 4)
-        })
+        # Assign categories and calculate similarity scores
+        similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
+        pages_df['assigned_category'] = [CATEGORIES[i] for i in I.flatten()]
+        pages_df['similarity_score'] = np.round(similarity_scores.flatten(), 4)
 
-        # Display and download output
-        st.header("Results")
-        st.write(matches_df)
+        # Step 5: Display and Download Results
+        st.success("Categorization complete! Download your results below.")
+        st.write(pages_df[['combined_text', 'assigned_category', 'similarity_score']])
+
         st.download_button(
-            label="Download Results as CSV",
-            data=matches_df.to_csv(index=False),
-            file_name="redirect_mapping_output.csv",
+            label="Download Categorized Pages as CSV",
+            data=pages_df.to_csv(index=False),
+            file_name="categorized_pages.csv",
             mime="text/csv",
         )
