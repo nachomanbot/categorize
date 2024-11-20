@@ -9,7 +9,7 @@ st.title("Enhanced Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
-This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity. Includes enhanced preprocessing, weighted embeddings, and fallback categories.
+This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity. Handles missing fields like Titles, Meta Descriptions, or Headings gracefully.
 
 ⚡ **Preloaded Categories**  
 - **Agent Pages**: Pages describing real estate agents, their profiles, and contact details.  
@@ -29,7 +29,7 @@ This tool categorizes pages by matching their content with a preloaded list of c
 3. Download the categorized results as a CSV.
 
 ⚡ **Note:**  
-- Ensure the `pages.csv` file is in `.csv` format with relevant metadata columns.
+- This tool works even if some fields (e.g., Titles, Meta Descriptions, or Headings) are missing.
 """)
 
 # Preloaded categories with detailed descriptions
@@ -56,57 +56,57 @@ if uploaded_pages:
     # Step 2: Load Pages Data
     pages_df = pd.read_csv(uploaded_pages)
 
-    # Combine and weight text columns for similarity matching
-    pages_df['combined_text'] = (
-        pages_df['Title'].fillna('') + " " +
-        2 * pages_df['Meta Description'].fillna('') + " " +  # Weighting Meta Descriptions more heavily
-        pages_df['Headings'].fillna('')
-    )
+    # Define expected fields and dynamically handle missing columns
+    expected_fields = ['Title', 'Meta Description', 'Headings']
+    available_fields = [field for field in expected_fields if field in pages_df.columns]
 
-    # Extract category names and descriptions
-    category_names = list(CATEGORIES.keys())
-    category_descriptions = list(CATEGORIES.values())
+    if not available_fields:
+        st.error("No usable fields found in the uploaded file. Please include at least one of: Title, Meta Description, or Headings.")
+    else:
+        # Combine only available columns for similarity matching
+        pages_df['combined_text'] = pages_df[available_fields].fillna('').apply(lambda x: ' '.join(x.astype(str)), axis=1)
 
-    # Step 3: Categorize Pages
-    if st.button("Categorize Pages"):
-        st.info("Processing data... This may take a while.")
+        # Extract category names and descriptions
+        category_names = list(CATEGORIES.keys())
+        category_descriptions = list(CATEGORIES.values())
 
-        # Step 4: Generate Embeddings for Pages and Categories
-        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model for better performance
+        # Step 3: Categorize Pages
+        if st.button("Categorize Pages"):
+            st.info("Processing data... This may take a while.")
 
-        # Generate embeddings for pages
-        pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
+            # Step 4: Generate Embeddings for Pages and Categories
+            model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model for better performance
 
-        # Generate embeddings for preloaded categories
-        category_embeddings = model.encode(category_descriptions, show_progress_bar=True)
+            # Generate embeddings for pages
+            pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
 
-        # Create a FAISS index for categories
-        dimension = category_embeddings.shape[1]
-        faiss_index = faiss.IndexFlatL2(dimension)
-        faiss_index.add(category_embeddings.astype('float32'))
+            # Generate embeddings for preloaded categories
+            category_embeddings = model.encode(category_descriptions, show_progress_bar=True)
 
-        # Match pages to categories
-        D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
+            # Create a FAISS index for categories
+            dimension = category_embeddings.shape[1]
+            faiss_index = faiss.IndexFlatL2(dimension)
+            faiss_index.add(category_embeddings.astype('float32'))
 
-        # Log similarity scores for debugging
-        similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
-        st.write("Similarity Scores (Preview):", similarity_scores.flatten()[:10])
+            # Match pages to categories
+            D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
 
-        # Assign categories and calculate similarity scores
-        threshold = 0.3  # Minimum similarity score for a valid match
-        pages_df['assigned_category'] = [
-            category_names[i] if score >= threshold else "Other Pages"
-            for i, score in zip(I.flatten(), similarity_scores.flatten())
-        ]
-        pages_df['similarity_score'] = np.round(similarity_scores.flatten(), 4)
+            # Assign categories and calculate similarity scores
+            similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
+            threshold = 0.3  # Minimum similarity score for a valid match
+            pages_df['assigned_category'] = [
+                category_names[i] if score >= threshold else "Other Pages"
+                for i, score in zip(I.flatten(), similarity_scores.flatten())
+            ]
+            pages_df['similarity_score'] = np.round(similarity_scores.flatten(), 4)
 
-        # Step 5: Display and Download Results
-        st.success("Categorization complete! Download your results below.")
-        st.write(pages_df[['combined_text', 'assigned_category', 'similarity_score']])
+            # Step 5: Display and Download Results
+            st.success("Categorization complete! Download your results below.")
+            st.write(pages_df[['combined_text', 'assigned_category', 'similarity_score']])
 
-        st.download_button(
-            label="Download Categorized Pages as CSV",
-            data=pages_df.to_csv(index=False),
-            file_name="categorized_pages.csv",
-            mime="text/csv",
-        )
+            st.download_button(
+                label="Download Categorized Pages as CSV",
+                data=pages_df.to_csv(index=False),
+                file_name="categorized_pages.csv",
+                mime="text/csv",
+            )
