@@ -39,20 +39,27 @@ if uploaded_file:
         st.success("File uploaded successfully!")
 
         # Step 3: Define Categorization Rules
-        def categorize_url(url):
-            # Step 3.1: Primary Categories
-            if re.search(r"/property/\d+|/listings/\w+", url):
-                return "Property Pages"
-            elif re.search(r"/homes-for-sale/[a-zA-Z0-9-]+", url):
-                return "Property Pages"  # Area-specific homes-for-sale URLs
-            elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
-                return "MLS Pages"  # Broader search categories
-            elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
-                return "Agent Pages"
-            elif "/blog" in url:
-                return "Blog Pages"
-            elif re.search(r"/about|/contact|/testimonials|/careers|/compare|/our-listing-process", url) or re.match(r"^https?://[^/]+/?$", url):
-                return "CMS Pages"
-            elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
-                return "Neighborhood Pages"
-            elif re.search(r"page
+    def categorize_url(url):
+    # Primary Categories
+    if re.search(r"/property/\d+|/listings/\w+", url):
+        return "Property Pages"
+    elif re.search(r"/homes-for-sale/[a-zA-Z0-9-]+", url):
+        return "Property Pages"  # Area-specific homes-for-sale URLs
+    elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
+        return "MLS Pages"  # Broader search categories
+    elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
+        return "Agent Pages"
+    elif "/blog" in url:
+        return "Blog Pages"
+    elif re.search(r"/about|/contact|/testimonials|/careers|/compare|/our-listing-process", url) or re.match(r"^https?://[^/]+/?$", url):
+        return "CMS Pages"
+    elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
+        return "Neighborhood Pages"
+    elif re.search(r"page=[0-9]+", url) or "/page/" in url:
+        return "Pagination"
+    elif "?" in url:
+        return "Parameters"
+    elif len(url) > 100:
+        return "Long URLs"
+    else:
+        return "Uncategorized"
