@@ -39,7 +39,7 @@ if uploaded_file:
         st.success("File uploaded successfully!")
 
         # Step 3: Define Categorization Rules
-    def categorize_url(url):
+        def categorize_url(url):
     # Primary Categories
     if re.search(r"/property/\d+|/listings/\w+", url):
         return "Property Pages"
