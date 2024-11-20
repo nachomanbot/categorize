@@ -3,27 +3,27 @@ import pandas as pd
 import re
 
 # Set the page title
-st.title("Enhanced URL-Based Page Categorization Tool")
+st.title("Improved URL-Based Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
-This tool categorizes pages solely based on URL patterns, with improved distinctions between Property Pages and MLS Pages, and processes duplicate rules last.
+This tool categorizes pages solely based on URL patterns, with enhanced distinction between Property Pages and MLS Pages, and expanded CMS rules.
 
 ⚡ **How to Use It:**  
-1. Upload `pages.csv` containing a single column: `URL`.  
-2. Click **"Categorize Pages"** to start the process.  
-3. Download the categorized results as a CSV.
+1. Prepare your URLs by removing duplicates (e.g., www vs Non-www, http vs https).  
+2. Upload `pages.csv` containing a single column: `URL`.  
+3. Click **"Categorize Pages"** to start the process.  
+4. Download the categorized results as a CSV.
 
 ⚡ **Predefined Categories**  
-- **Property Pages**: URLs containing specific listings (e.g., `/property/123`, `/listings/single`).  
-- **MLS Pages**: URLs with broader search patterns (e.g., `/homes-for-sale`, `/listings`, `/by-price`).  
+- **Property Pages**: Specific listings (e.g., `/property/123`, `/listings/single`).  
+- **MLS Pages**: Broader search patterns (e.g., `/homes-for-sale`, `/listings`).  
 - **Agent Pages**: URLs with `/agents`, `/team`, or names (e.g., `/john-doe`).  
 - **Blog Pages**: URLs with `/blog`.  
-- **CMS Pages**: Generic or non-duplicate root-level pages (e.g., `/about`, `/contact`, `/careers`).  
+- **CMS Pages**: Generic or non-duplicate root-level pages (e.g., `/about`, `/contact`, `/careers`, `/our-listing-process`).  
 - **Neighborhood Pages**: URLs referencing locations or communities.  
 - **Pagination**: URLs indicating `page=2` or `/page/2`.  
 - **Parameters**: URLs with query parameters (e.g., `?city=`).  
-- **Duplicates**: `http vs https` or `www vs Non-www` (processed last).  
 - **Fallback**: Uncategorized if no rules match.  
 """)
 
@@ -49,7 +49,7 @@ if uploaded_file:
                 return "Agent Pages"
             elif "/blog" in url:
                 return "Blog Pages"
-            elif re.search(r"/about|/contact|/testimonials|/careers|/compare", url) or re.match(r"^https?://[^/]+/?$", url):
+            elif re.search(r"/about|/contact|/testimonials|/careers|/compare|/our-listing-process", url) or re.match(r"^https?://[^/]+/?$", url):
                 return "CMS Pages"
             elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
                 return "Neighborhood Pages"
@@ -57,14 +57,6 @@ if uploaded_file:
                 return "Pagination"
             elif "?" in url:
                 return "Parameters"
-
-            # Step 3.2: Duplicate Rules (Processed Last)
-            elif re.match(r"^http://", url):
-                return "Duplicates: http vs https"
-            elif re.match(r"^https?://www\.", url) or re.match(r"^https?://[^www]\.", url):
-                return "Duplicates: www vs Non-www"
-
-            # Step 3.3: Fallback
             elif len(url) > 100:
                 return "Long URLs"
             else:
