@@ -57,7 +57,7 @@ if uploaded_pages:
     pages_df = pd.read_csv(uploaded_pages)
 
     # Define expected fields and dynamically handle missing columns
-    expected_fields = ['Title', 'Meta Description', 'Headings']
+    expected_fields = ['Title 1', 'Meta Description 1', 'H1-1']
     available_fields = [field for field in expected_fields if field in pages_df.columns]
 
     if not available_fields:
