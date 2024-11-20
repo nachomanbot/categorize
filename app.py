@@ -40,26 +40,41 @@ if uploaded_file:
 
         # Step 3: Define Categorization Rules
         def categorize_url(url):
-    # Primary Categories
-    if re.search(r"/property/\d+|/listings/\w+", url):
-        return "Property Pages"
-    elif re.search(r"/homes-for-sale/[a-zA-Z0-9-]+", url):
-        return "Property Pages"  # Area-specific homes-for-sale URLs
-    elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
-        return "MLS Pages"  # Broader search categories
-    elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
-        return "Agent Pages"
-    elif "/blog" in url:
-        return "Blog Pages"
-    elif re.search(r"/about|/contact|/testimonials|/careers|/compare|/our-listing-process", url) or re.match(r"^https?://[^/]+/?$", url):
-        return "CMS Pages"
-    elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
-        return "Neighborhood Pages"
-    elif re.search(r"page=[0-9]+", url) or "/page/" in url:
-        return "Pagination"
-    elif "?" in url:
-        return "Parameters"
-    elif len(url) > 100:
-        return "Long URLs"
-    else:
-        return "Uncategorized"
+            # Primary Categories
+            if re.search(r"/property/\d+|/listings/\w+", url):
+                return "Property Pages"
+            elif re.search(r"/homes-for-sale/[a-zA-Z0-9-]+", url):
+                return "Property Pages"  # Area-specific homes-for-sale URLs
+            elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
+                return "MLS Pages"  # Broader search categories
+            elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
+                return "Agent Pages"
+            elif "/blog" in url:
+                return "Blog Pages"
+            elif re.search(r"/about|/contact|/testimonials|/careers|/compare|/our-listing-process", url) or re.match(r"^https?://[^/]+/?$", url):
+                return "CMS Pages"
+            elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
+                return "Neighborhood Pages"
+            elif re.search(r"page=[0-9]+", url) or "/page/" in url:
+                return "Pagination"
+            elif "?" in url:
+                return "Parameters"
+            elif len(url) > 100:
+                return "Long URLs"
+            else:
+                return "Uncategorized"
+
+        # Apply rules to the URL column
+        pages_df['Assigned Category'] = pages_df['URL'].apply(categorize_url)
+
+        # Display Results
+        st.header("Categorized Pages")
+        st.write(pages_df[['URL', 'Assigned Category']])
+
+        # Step 4: Download the Results
+        st.download_button(
+            label="Download Categorized Pages as CSV",
+            data=pages_df.to_csv(index=False),
+            file_name="categorized_pages.csv",
+            mime="text/csv",
+        )
