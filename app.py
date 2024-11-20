@@ -5,13 +5,13 @@ from sentence_transformers import SentenceTransformer
 import faiss
 
 # Set the page title
-st.title("Improved Page Categorization Tool")
+st.title("Enhanced Page Categorization Tool")
 
 st.markdown("""
-👉🏼 **What It Does**  
-This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity.
+⚡ **What It Does**  
+This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity. Includes enhanced preprocessing, weighted embeddings, and fallback categories.
 
-👉🏼 **Preloaded Categories**  
+⚡ **Preloaded Categories**  
 - **Agent Pages**: Pages describing real estate agents, their profiles, and contact details.  
 - **Blog Pages**: Articles and blog posts covering topics related to real estate, lifestyle, or market trends.  
 - **CMS Pages**: Content management system pages, such as About Us or Contact pages.  
@@ -21,13 +21,14 @@ This tool categorizes pages by matching their content with a preloaded list of c
 - **Press Pages**: Pages featuring press releases or media coverage.  
 - **MLS Pages**: Pages featuring multiple listing service (MLS) data.  
 - **Long URLs**: Pages with overly long or complex URLs.  
+- **Other Pages**: A generic category for pages that don't fit specific categories.
 
-👉🏼 **How to Use It:**  
+⚡ **How to Use It:**  
 1. Upload `pages.csv` containing the pages to categorize.  
 2. Click **"Categorize Pages"** to start the process.  
 3. Download the categorized results as a CSV.
 
-👉🏼 **Note:**  
+⚡ **Note:**  
 - Ensure the `pages.csv` file is in `.csv` format with relevant metadata columns.
 """)
 
@@ -41,7 +42,8 @@ CATEGORIES = {
     "Property Pages": "Pages showcasing property listings, including property descriptions, prices, and photos.",
     "Press Pages": "Pages featuring press releases or media coverage.",
     "MLS Pages": "Pages featuring multiple listing service (MLS) data.",
-    "Long URLs": "Pages with overly long or complex URLs."
+    "Long URLs": "Pages with overly long or complex URLs.",
+    "Other Pages": "A fallback category for pages that don't fit specific categories."
 }
 
 # Step 1: Upload Pages File
@@ -54,8 +56,12 @@ if uploaded_pages:
     # Step 2: Load Pages Data
     pages_df = pd.read_csv(uploaded_pages)
 
-    # Combine all text columns for similarity matching
-    pages_df['combined_text'] = pages_df.fillna('').apply(lambda x: ' '.join(x.astype(str)), axis=1)
+    # Combine and weight text columns for similarity matching
+    pages_df['combined_text'] = (
+        pages_df['Title'].fillna('') + " " +
+        2 * pages_df['Meta Description'].fillna('') + " " +  # Weighting Meta Descriptions more heavily
+        pages_df['Headings'].fillna('')
+    )
 
     # Extract category names and descriptions
     category_names = list(CATEGORIES.keys())
@@ -66,7 +72,7 @@ if uploaded_pages:
         st.info("Processing data... This may take a while.")
 
         # Step 4: Generate Embeddings for Pages and Categories
-        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model
+        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model for better performance
 
         # Generate embeddings for pages
         pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
@@ -83,14 +89,13 @@ if uploaded_pages:
         D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
 
         # Log similarity scores for debugging
-        st.write("Similarity Scores:", D.flatten())
+        similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
+        st.write("Similarity Scores (Preview):", similarity_scores.flatten()[:10])
 
         # Assign categories and calculate similarity scores
-        similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
-        threshold = 0.4  # Minimum similarity score for a valid match
-
+        threshold = 0.3  # Minimum similarity score for a valid match
         pages_df['assigned_category'] = [
-            category_names[i] if score >= threshold else "Uncategorized"
+            category_names[i] if score >= threshold else "Other Pages"
             for i, score in zip(I.flatten(), similarity_scores.flatten())
         ]
         pages_df['similarity_score'] = np.round(similarity_scores.flatten(), 4)
