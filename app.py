@@ -9,7 +9,7 @@ st.title("Improved Page Categorization Tool")
 
 st.markdown("""
 👉🏼 **What It Does**  
-This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity. Each category includes a detailed description to improve matching accuracy.
+This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity.
 
 👉🏼 **Preloaded Categories**  
 - **Agent Pages**: Pages describing real estate agents, their profiles, and contact details.  
@@ -66,7 +66,7 @@ if uploaded_pages:
         st.info("Processing data... This may take a while.")
 
         # Step 4: Generate Embeddings for Pages and Categories
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model
 
         # Generate embeddings for pages
         pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
@@ -82,9 +82,12 @@ if uploaded_pages:
         # Match pages to categories
         D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
 
+        # Log similarity scores for debugging
+        st.write("Similarity Scores:", D.flatten())
+
         # Assign categories and calculate similarity scores
         similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
-        threshold = 0.5  # Minimum similarity score for a valid match
+        threshold = 0.4  # Minimum similarity score for a valid match
 
         pages_df['assigned_category'] = [
             category_names[i] if score >= threshold else "Uncategorized"
