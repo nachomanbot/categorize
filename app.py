@@ -1,112 +1,89 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from sentence_transformers import SentenceTransformer
-import faiss
+import re
 
 # Set the page title
-st.title("Enhanced Page Categorization Tool")
+st.title("Enhanced Rule-Based Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
-This tool categorizes pages by matching their content with a preloaded list of categories based on text similarity. Handles missing fields like Titles, Meta Descriptions, or Headings gracefully.
+This tool categorizes pages based on predefined rules and URL patterns, such as detecting `/blog` for Blog Pages or `/property` for Property Pages.  
 
-⚡ **Preloaded Categories**  
-- **Agent Pages**: Pages describing real estate agents, their profiles, and contact details.  
-- **Blog Pages**: Articles and blog posts covering topics related to real estate, lifestyle, or market trends.  
-- **CMS Pages**: Content management system pages, such as About Us or Contact pages.  
-- **Development Pages**: Pages showcasing new or ongoing real estate developments.  
-- **Neighborhood Pages**: Pages providing detailed information about neighborhoods, including amenities and demographics.  
-- **Property Pages**: Pages showcasing property listings, including property descriptions, prices, and photos.  
-- **Press Pages**: Pages featuring press releases or media coverage.  
-- **MLS Pages**: Pages featuring multiple listing service (MLS) data.  
-- **Long URLs**: Pages with overly long or complex URLs.  
-- **Other Pages**: A generic category for pages that don't fit specific categories.
+⚡ **Features**  
+- Detects duplicates (e.g., `http vs https`, `www vs non-www`).  
+- Identifies parameterized or long URLs.  
+- Enhanced rules for Property Pages, MLS Pages, Agent Pages, and more.
 
 ⚡ **How to Use It:**  
-1. Upload `pages.csv` containing the pages to categorize.  
+1. Upload `pages.csv` containing at least a `URL` column.  
 2. Click **"Categorize Pages"** to start the process.  
 3. Download the categorized results as a CSV.
 
-⚡ **Note:**  
-- This tool works even if some fields (e.g., Titles, Meta Descriptions, or Headings) are missing.
+⚡ **Predefined Categories**  
+- **Property Pages**: URLs containing `/property`, `/homes-for-sale`, `/listings`.  
+- **MLS Pages**: URLs with `/listing-report` or `?tab=all`.  
+- **Agent Pages**: URLs with `/agents`, `/team`, or names (e.g., `/john-doe`).  
+- **Blog Pages**: URLs with `/blog`.  
+- **CMS Pages**: Root-level or generic pages (e.g., `/about`, `/contact`).  
+- **Neighborhood Pages**: URLs referencing locations or communities.  
+- **Pagination**: URLs indicating `page=2` or `/page/2`.  
+- **Parameters**: URLs with query parameters (e.g., `?city=`).  
+- **Duplicates**: `http vs https` or `www vs non-www`.  
+- **Fallback**: Uncategorized if no rules match.  
 """)
 
-# Preloaded categories with detailed descriptions
-CATEGORIES = {
-    "Agent Pages": "Pages describing real estate agents, their profiles, and contact details.",
-    "Blog Pages": "Articles and blog posts covering topics related to real estate, lifestyle, or market trends.",
-    "CMS Pages": "Content management system pages, such as About Us or Contact pages.",
-    "Development Pages": "Pages showcasing new or ongoing real estate developments.",
-    "Neighborhood Pages": "Pages providing detailed information about neighborhoods, including amenities and demographics.",
-    "Property Pages": "Pages showcasing property listings, including property descriptions, prices, and photos.",
-    "Press Pages": "Pages featuring press releases or media coverage.",
-    "MLS Pages": "Pages featuring multiple listing service (MLS) data.",
-    "Long URLs": "Pages with overly long or complex URLs.",
-    "Other Pages": "A fallback category for pages that don't fit specific categories."
-}
-
 # Step 1: Upload Pages File
-st.header("Upload Your Pages File")
-uploaded_pages = st.file_uploader("Upload pages.csv", type="csv")
+uploaded_file = st.file_uploader("Upload your pages.csv file", type="csv")
 
-if uploaded_pages:
-    st.success("File uploaded successfully!")
-    
+if uploaded_file:
     # Step 2: Load Pages Data
-    pages_df = pd.read_csv(uploaded_pages)
-
-    # Define expected fields and dynamically handle missing columns
-    expected_fields = ['Title 1', 'Meta Description 1', 'H1-1']
-    available_fields = [field for field in expected_fields if field in pages_df.columns]
-
-    if not available_fields:
-        st.error("No usable fields found in the uploaded file. Please include at least one of: Title, Meta Description, or Headings.")
+    pages_df = pd.read_csv(uploaded_file)
+    if 'URL' not in pages_df.columns:
+        st.error("The uploaded file must have a 'URL' column.")
     else:
-        # Combine only available columns for similarity matching
-        pages_df['combined_text'] = pages_df[available_fields].fillna('').apply(lambda x: ' '.join(x.astype(str)), axis=1)
+        st.success("File uploaded successfully!")
 
-        # Extract category names and descriptions
-        category_names = list(CATEGORIES.keys())
-        category_descriptions = list(CATEGORIES.values())
+        # Step 3: Define Categorization Rules
+        def categorize_url(url):
+            # Predefined rules
+            if "/blog" in url:
+                return "Blog Pages"
+            elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
+                return "Agent Pages"
+            elif "/property" in url or "/homes-for-sale" in url or "/listings" in url:
+                return "Property Pages"
+            elif "/listing-report" in url or "?tab=all" in url:
+                return "MLS Pages"
+            elif "/about" in url or "/contact" in url or re.match(r"^https?://[^/]+/?$", url):
+                return "CMS Pages"
+            elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
+                return "Neighborhood Pages"
+            elif re.search(r"page=[0-9]+", url) or "/page/" in url:
+                return "Pagination"
+            elif "?" in url:
+                return "Parameters"
+            elif re.match(r"^http://", url):
+                return "Duplicates: http vs https"
+            elif re.match(r"^https?://www\.", url) or re.match(r"^https?://[^www]\.", url):
+                return "Duplicates: www vs Non-www"
+            elif "/new_developments" in url:
+                return "Development Pages"
+            elif len(url) > 100:
+                return "Long URLs"
+            else:
+                return "Uncategorized"
 
-        # Step 3: Categorize Pages
-        if st.button("Categorize Pages"):
-            st.info("Processing data... This may take a while.")
+        # Apply rules to the URL column
+        pages_df['Assigned Category'] = pages_df['URL'].apply(categorize_url)
 
-            # Step 4: Generate Embeddings for Pages and Categories
-            model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Updated model for better performance
+        # Display Results
+        st.header("Categorized Pages")
+        st.write(pages_df[['URL', 'Assigned Category']])
 
-            # Generate embeddings for pages
-            pages_embeddings = model.encode(pages_df['combined_text'].tolist(), show_progress_bar=True)
-
-            # Generate embeddings for preloaded categories
-            category_embeddings = model.encode(category_descriptions, show_progress_bar=True)
-
-            # Create a FAISS index for categories
-            dimension = category_embeddings.shape[1]
-            faiss_index = faiss.IndexFlatL2(dimension)
-            faiss_index.add(category_embeddings.astype('float32'))
-
-            # Match pages to categories
-            D, I = faiss_index.search(pages_embeddings.astype('float32'), k=1)  # k=1 for the closest match
-
-            # Assign categories and calculate similarity scores
-            similarity_scores = 1 - (D / np.max(D))  # Convert distance to similarity
-            threshold = 0.3  # Minimum similarity score for a valid match
-            pages_df['assigned_category'] = [
-                category_names[i] if score >= threshold else "Other Pages"
-                for i, score in zip(I.flatten(), similarity_scores.flatten())
-            ]
-            pages_df['similarity_score'] = np.round(similarity_scores.flatten(), 4)
-
-            # Step 5: Display and Download Results
-            st.success("Categorization complete! Download your results below.")
-            st.write(pages_df[['combined_text', 'assigned_category', 'similarity_score']])
-
-            st.download_button(
-                label="Download Categorized Pages as CSV",
-                data=pages_df.to_csv(index=False),
-                file_name="categorized_pages.csv",
-                mime="text/csv",
-            )
+        # Step 4: Download the Results
+        st.download_button(
+            label="Download Categorized Pages as CSV",
+            data=pages_df.to_csv(index=False),
+            file_name="categorized_pages.csv",
+            mime="text/csv",
+        )
