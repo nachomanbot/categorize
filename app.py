@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # Set the page title
-st.title("Improved URL-Based Page Categorization Tool")
+st.title("Refined URL-Based Page Categorization Tool")
 
 st.markdown("""
 ⚡ **What It Does**  
@@ -16,11 +16,11 @@ This tool categorizes pages solely based on URL patterns, with enhanced distinct
 4. Download the categorized results as a CSV.
 
 ⚡ **Predefined Categories**  
-- **Property Pages**: Specific listings (e.g., `/property/123`, `/listings/single`).  
+- **Property Pages**: Specific listings or area-focused URLs (e.g., `/property/123`, `/homes-for-sale/southlake`).  
 - **MLS Pages**: Broader search patterns (e.g., `/homes-for-sale`, `/listings`).  
 - **Agent Pages**: URLs with `/agents`, `/team`, or names (e.g., `/john-doe`).  
 - **Blog Pages**: URLs with `/blog`.  
-- **CMS Pages**: Generic or non-duplicate root-level pages (e.g., `/about`, `/contact`, `/careers`, `/our-listing-process`).  
+- **CMS Pages**: Generic or root-level pages (e.g., `/about`, `/contact`, `/careers`).  
 - **Neighborhood Pages**: URLs referencing locations or communities.  
 - **Pagination**: URLs indicating `page=2` or `/page/2`.  
 - **Parameters**: URLs with query parameters (e.g., `?city=`).  
@@ -43,8 +43,10 @@ if uploaded_file:
             # Step 3.1: Primary Categories
             if re.search(r"/property/\d+|/listings/\w+", url):
                 return "Property Pages"
+            elif re.search(r"/homes-for-sale/[a-zA-Z0-9-]+", url):
+                return "Property Pages"  # Area-specific homes-for-sale URLs
             elif re.search(r"/homes-for-sale|/listings|/by-price|/by-property-type", url):
-                return "MLS Pages"
+                return "MLS Pages"  # Broader search categories
             elif "/agents" in url or "/team" in url or re.search(r"/[a-zA-Z-]+$", url):
                 return "Agent Pages"
             elif "/blog" in url:
@@ -53,26 +55,4 @@ if uploaded_file:
                 return "CMS Pages"
             elif "/neighborhoods" in url or re.search(r"/[a-zA-Z-]+$", url):
                 return "Neighborhood Pages"
-            elif re.search(r"page=[0-9]+", url) or "/page/" in url:
-                return "Pagination"
-            elif "?" in url:
-                return "Parameters"
-            elif len(url) > 100:
-                return "Long URLs"
-            else:
-                return "Uncategorized"
-
-        # Apply rules to the URL column
-        pages_df['Assigned Category'] = pages_df['URL'].apply(categorize_url)
-
-        # Display Results
-        st.header("Categorized Pages")
-        st.write(pages_df[['URL', 'Assigned Category']])
-
-        # Step 4: Download the Results
-        st.download_button(
-            label="Download Categorized Pages as CSV",
-            data=pages_df.to_csv(index=False),
-            file_name="categorized_pages.csv",
-            mime="text/csv",
-        )
+            elif re.search(r"page
