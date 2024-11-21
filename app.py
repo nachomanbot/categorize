@@ -40,47 +40,42 @@ def categorize_url(url, us_cities):
         return "Pagination"
 
     # 8. CMS Pages (Contact, Testimonials, About, etc.)
-    if re.search(r'/contact|/about|/testimonials|/resources|/privacy|/terms|/sellyourhouse', url):
+    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources', url):
         return "CMS Pages"
 
-    # 9. Pages with Parameters
-    if "?" in url:
-        return "Parameters"
-
-    # 10. Neighborhood Pages (second-to-last priority)
-    if any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url):
+    # 9. Neighborhood Pages (second-to-last priority)
+    if not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/search|/mls') and (
+        any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url)):
         return "Neighborhood Pages"
 
-    # 11. CMS Pages (Fallback)
+    # 10. Default fallback
     return "CMS Pages"
 
-# Main Streamlit app
+# Main function
 def main():
-    st.title("URL Categorization Tool")
-    st.write("Upload a CSV file containing a column named 'URL' for categorization.")
-
-    # File upload
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    st.title("URL Categorizer")
+    
+    # Load US cities
     us_cities = load_us_cities()
 
-    if uploaded_file:
-        # Load the data
+    # File upload
+    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+    if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
+        
         if "URL" not in df.columns:
-            st.error("The uploaded file must contain a 'URL' column.")
+            st.error("The uploaded file must contain a column named 'URL'.")
             return
-
-        # Categorize each URL
-        st.write("Processing URLs...")
-        df["Category"] = df["URL"].apply(lambda x: categorize_url(x, us_cities))
-
-        # Display the categorized data
-        st.write("Categorized URLs:")
+        
+        df["Category"] = df["URL"].apply(lambda url: categorize_url(url, us_cities))
+        
+        st.write("Categorized Data:")
         st.dataframe(df)
 
-        # Download the result
+        # Download button for the categorized data
         csv = df.to_csv(index=False)
-        st.download_button("Download Categorized CSV", csv, "categorized_urls.csv", "text/csv")
+        st.download_button("Download Categorized Data", data=csv, file_name="categorized_pages.csv", mime="text/csv")
 
+# Run the app
 if __name__ == "__main__":
     main()
