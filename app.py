@@ -25,6 +25,10 @@ def categorize_url(url, us_cities):
     if re.search(r'/properties|/property|/homes-for-sale|/rent|/listings|/rentals', url) and not re.search(r'/page', url):
         return "Property Pages"
 
+        # 6. Parameters
+    if re.search(r'\?.+=', url):
+        return "Parameters"
+        
         # 0. Homepage (Prioritized)
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
         return "CMS Pages"
@@ -39,9 +43,7 @@ def categorize_url(url, us_cities):
 
 
 
-    # 6. Parameters
-    if re.search(r'\?.+=', url):
-        return "Parameters"
+
 
     # 7. CMS Pages (Contact, Testimonials, About, etc.)
     if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
