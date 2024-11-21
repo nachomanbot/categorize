@@ -36,13 +36,6 @@ def categorize_url(url, us_cities):
   # 6. Property Pages
     if re.search(r'/homes-for-sale|/home-for-sale|/properties|/property|/listings|/rentals', url):
         return "Property Pages"
-        
-    # 5. MLS Pages
-    if re.search(r'/homes-for-sale|/home-for-sale', url) and not re.search(r'/[^/]+/[^/]+', url):
-        return "MLS Pages"
-
-
-
     # 7. Parameters
     if re.search(r'\?.+=', url):
         return "Parameters"
