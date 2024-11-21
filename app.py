@@ -35,21 +35,21 @@ def categorize_url(url, us_cities):
     if re.search(r'/mls|/property-search|/search|/listings', url) and not re.search(r'/page/', url):
         return "MLS Pages"
 
-    # 7. Neighborhood Pages
-    if any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url):
-        return "Neighborhood Pages"
-
-    # 8. Pagination
+    # 7. Pagination
     if re.search(r'/page/\d+', url):
         return "Pagination"
 
-    # 9. CMS Pages (Contact, Testimonials, About, etc.)
-    if re.search(r'/contact|/about|/testimonials|/resources|/privacy|/terms', url):
+    # 8. CMS Pages (Contact, Testimonials, About, etc.)
+    if re.search(r'/contact|/about|/testimonials|/resources|/privacy|/terms|/sellyourhouse', url):
         return "CMS Pages"
 
-    # 10. Pages with Parameters
+    # 9. Pages with Parameters
     if "?" in url:
         return "Parameters"
+
+    # 10. Neighborhood Pages (second-to-last priority)
+    if any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url):
+        return "Neighborhood Pages"
 
     # 11. CMS Pages (Fallback)
     return "CMS Pages"
