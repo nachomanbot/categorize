@@ -22,7 +22,7 @@ def categorize_url(url, us_cities):
         return "Blog Pages"
 
         # 5. Property Pages
-    if re.search(r'/properties|/property|/listings|/rentals', url) and not re.search(r'/page', url):
+    if re.search(r'/properties|/property|/homes-for-sale|/rent|/listings|/rentals', url) and not re.search(r'/page', url):
         return "Property Pages"
 
         # 0. Homepage (Prioritized)
