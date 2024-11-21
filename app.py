@@ -37,15 +37,11 @@ def categorize_url(url, us_cities):
     if re.search(r'\?.+=', url):
         return "Parameters"
 
-    # 7. Duplicates (HTTP vs HTTPS, WWW vs Non-WWW, etc.)
-    if re.search(r'http://|https://|www\.', url):
-        return "Duplicates"
-
-    # 8. CMS Pages (Contact, Testimonials, About, etc.)
+    # 7. CMS Pages (Contact, Testimonials, About, etc.)
     if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
         return "CMS Pages"
 
-    # 9. Neighborhood Pages (Detect City Names)
+    # 8. Neighborhood Pages (Detect City Names)
     if (
         any(city in url for city in us_cities) and
         not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
