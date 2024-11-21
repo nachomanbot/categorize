@@ -44,7 +44,7 @@ def categorize_url(url, us_cities):
         return "CMS Pages"
 
     # 9. Neighborhood Pages (second-to-last priority)
-    if not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/search|/mls') and (
+    if not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/search|/mls', url) and (
         any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url)):
         return "Neighborhood Pages"
 
