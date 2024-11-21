@@ -16,7 +16,7 @@ def categorize_url(url, us_cities):
         # 8. Neighborhood Pages (Detect City Names)
     if (
         any(city in url for city in us_cities) and
-        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
+        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url) and not url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
     ):
         return "Neighborhood Pages"
 
