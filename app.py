@@ -13,10 +13,6 @@ def load_us_cities():
 def categorize_url(url, us_cities):
     url = url.lower()
 
-    # 0. Homepage (Prioritized)
-    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
-        return "CMS Pages"
-
     # 1. Blog Filters
     if re.search(r'/tag|/category', url):
         return "Blog Filters"
@@ -24,6 +20,10 @@ def categorize_url(url, us_cities):
     # 2. Blog Pages
     if re.search(r'/blog', url) and not re.search(r'/page|/author', url):
         return "Blog Pages"
+
+        # 0. Homepage (Prioritized)
+    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
+        return "CMS Pages"
 
     # 3. Pagination
     if re.search(r'/page/\d+', url):
