@@ -1,82 +1,90 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import re
 
-# Cache the function to load the US cities CSV file
+
+# Load US Cities CSV from static resource
 @st.cache_data
 def load_us_cities():
-    us_cities_path = 'us_cities.csv'  # Path to the file in the repo
-    try:
-        us_cities = pd.read_csv(us_cities_path)
-        # Convert all headers to lowercase
-        us_cities.columns = us_cities.columns.str.lower()
-        if 'city' not in us_cities.columns:
-            raise KeyError("The 'city' column is missing in the CSV file.")
-        return us_cities['city'].str.lower().tolist()
-    except Exception as e:
-        st.error(f"Error loading US cities: {e}")
-        return []
+    us_cities_path = 'us_cities.csv'  # Ensure this file is in your GitHub repo
+    us_cities = pd.read_csv(us_cities_path)['CITY'].str.lower().tolist()
+    return us_cities
 
-# Load US cities
-us_cities = load_us_cities()
 
-# Categorization function
+# Define categorization rules
 def categorize_url(url, us_cities):
-    # Categorize based on URL patterns
-    if '/about' in url or '/contact' in url or '/resources' in url:
-        return 'CMS Pages'
-    elif '/blog' in url and '/author' in url:
-        return 'Blog Author Pages'
-    elif '/blog' in url and 'page/' in url:
-        return 'Pagination'
-    elif '/property' in url and 'page/' in url:
-        return 'Pagination'
-    elif '/properties' in url or '/rentals' in url:
-        return 'Property Pages'
-    elif any(city in url.lower() for city in us_cities):
-        return 'Neighborhood Pages'
-    elif 'page/' in url:
-        return 'Pagination'
-    elif '/search' in url or '/listings' in url:
-        return 'MLS Pages'
-    elif '/category' in url or '/tag' in url:
-        return 'Blog Filters'
-    elif re.match(r'https?://[^/]+$', url):  # Match homepage URL
-        return 'CMS Pages'
-    else:
-        return 'CMS Pages'  # Default fallback
+    url = url.lower()
 
-# Streamlit app
+    # 1. Homepages
+    if re.match(r'^https?://[^/]+/?$', url):
+        return "CMS Pages"
+
+    # 2. Neighborhood Pages
+    if any(city in url for city in us_cities) or re.search(r'/neighborhoods|/areas', url):
+        return "Neighborhood Pages"
+
+    # 3. Property Pages
+    if re.search(r'/properties|/rentals|/homes-for-sale', url) and not re.search(r'/page/', url):
+        return "Property Pages"
+
+    # 4. MLS Pages
+    if re.search(r'/mls|/property-search|/search|/listings', url) and not re.search(r'/page/', url):
+        return "MLS Pages"
+
+    # 5. Blog Pages
+    if re.search(r'/blog/[^/]+$', url) and not re.search(r'/page/', url):
+        return "Blog Pages"
+
+    # 6. Blog Filters (e.g., tag pages, category pages)
+    if re.search(r'/blog/(tag|category|author)', url):
+        return "Blog Filters"
+
+    # 7. Pagination
+    if re.search(r'/page/\d+', url):
+        return "Pagination"
+
+    # 8. Pages with Parameters
+    if "?" in url:
+        return "Parameters"
+
+    # 9. CMS Pages (Fallback)
+    return "CMS Pages"
+
+
+# Main Streamlit App
 def main():
-    st.title("URL Categorization Tool ⚡")
-    st.write("Upload your CSV file with a `URL` column to categorize pages.")
+    st.title("URL Categorization Tool")
+    st.write("Upload your CSV file with a column named 'URL' to categorize the pages.")
 
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-    if uploaded_file:
-        try:
-            # Load the input file
-            df = pd.read_csv(uploaded_file)
-            if 'URL' not in df.columns:
-                st.error("The CSV file must contain a 'URL' column.")
-                return
+    uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
 
-            # Categorize URLs
-            df['Category'] = df['URL'].apply(lambda x: categorize_url(x, us_cities))
+    if uploaded_file is not None:
+        # Load the file
+        pages_df = pd.read_csv(uploaded_file)
 
-            # Display results
-            st.write("Categorization complete!")
-            st.dataframe(df)
+        if 'URL' not in pages_df.columns:
+            st.error("The uploaded CSV must contain a column named 'URL'.")
+            return
 
-            # Download button for categorized file
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="Download Categorized CSV",
-                data=csv,
-                file_name="categorized_pages.csv",
-                mime="text/csv",
-            )
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+        # Load US cities
+        us_cities = load_us_cities()
+
+        # Apply categorization
+        st.write("Categorizing URLs...")
+        pages_df['Category'] = pages_df['URL'].apply(lambda x: categorize_url(x, us_cities))
+
+        # Display results
+        st.write(pages_df)
+
+        # Download option
+        csv = pages_df.to_csv(index=False)
+        st.download_button(
+            label="Download Categorized CSV",
+            data=csv,
+            file_name="categorized_pages.csv",
+            mime="text/csv",
+        )
+
 
 if __name__ == "__main__":
     main()
