@@ -13,6 +13,15 @@ def load_us_cities():
 def categorize_url(url, us_cities):
     url = url.lower()
 
+        # 8. Neighborhood Pages (Detect City Names)
+    if (
+        any(city in url for city in us_cities) and
+        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
+    ):
+        return "Neighborhood Pages"
+
+
+    
     # 1. Blog Filters
     if re.search(r'/tag|/category', url):
         return "Blog Filters"
@@ -37,13 +46,6 @@ def categorize_url(url, us_cities):
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
         return "CMS Pages"
         
-    # 8. Neighborhood Pages (Detect City Names)
-    if (
-        any(city in url for city in us_cities) and
-        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
-    ):
-        return "Neighborhood Pages"
-
 
     # 4. Agent Pages
     if re.search(r'/agent|/team', url):
