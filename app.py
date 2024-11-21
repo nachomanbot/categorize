@@ -28,14 +28,16 @@ def categorize_url(url, us_cities):
         # 6. Parameters
     if re.search(r'\?.+=', url):
         return "Parameters"
+
+        # 3. Pagination
+    if re.search(r'/page/\d+', url):
+        return "Pagination"
         
         # 0. Homepage (Prioritized)
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
         return "CMS Pages"
 
-    # 3. Pagination
-    if re.search(r'/page/\d+', url):
-        return "Pagination"
+
 
     # 4. Agent Pages
     if re.search(r'/agent|/team', url):
