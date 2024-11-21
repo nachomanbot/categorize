@@ -22,16 +22,14 @@ if uploaded_file:
             url = url.lower()  # Make it case insensitive
 
             # Rules for categorization
-            if re.search(r'/blog/author/', url):
-                return "Author Pages"
-            elif re.search(r'/page/', url):
+            if re.search(r'/page/', url):
                 return "Pagination"
+            elif re.search(r'/blog/author/', url):
+                return "Author Pages"
             elif re.search(r'/blog', url):
                 return "Blog Pages"
-            elif re.search(r'/property', url) and len(url.strip("/").split("/")) > 2:
+            elif re.search(r'/homes-for-sale|/property|/details|/sold', url):
                 return "Property Pages"
-            elif re.search(r'/property', url):
-                return "MLS Pages"
             elif re.search(r'/about|/contact|/resources|/home|/privacy|/tos|/terms|/help', url):
                 return "CMS Pages"
             else:
