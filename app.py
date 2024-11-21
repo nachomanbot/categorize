@@ -80,4 +80,12 @@ def main():
         # Show results and allow download
         st.write("Categorized URLs:", df)
         st.download_button(
-         
+            label="Download Categorized CSV",
+            data=df.to_csv(index=False),
+            file_name="categorized_urls.csv",
+            mime="text/csv"
+        )
+
+# Run the app
+if __name__ == "__main__":
+    main()
