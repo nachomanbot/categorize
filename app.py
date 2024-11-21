@@ -47,9 +47,7 @@ def categorize_url(url, us_cities):
 
 
 
-    # 7. CMS Pages (Contact, Testimonials, About, etc.)
-    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
-        return "CMS Pages"
+
 
     # 8. Neighborhood Pages (Detect City Names)
     if (
@@ -57,6 +55,10 @@ def categorize_url(url, us_cities):
         not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
     ):
         return "Neighborhood Pages"
+
+        # 7. CMS Pages (Contact, Testimonials, About, etc.)
+    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
+        return "CMS Pages"
 
     # Fallback to CMS Pages if uncategorized
     return "CMS Pages"
