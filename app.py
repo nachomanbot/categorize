@@ -13,17 +13,17 @@ def load_us_cities():
 def categorize_url(url, us_cities):
     url = url.lower()
 
-        # 1. Blog Filters
+    # 0. Homepage (Prioritized)
+    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
+        return "CMS Pages"
+
+    # 1. Blog Filters
     if re.search(r'/tag|/category', url):
         return "Blog Filters"
 
     # 2. Blog Pages
     if re.search(r'/blog', url) and not re.search(r'/page|/author', url):
         return "Blog Pages"
-        
-    # 0. Homepage (Prioritized)
-    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
-        return "CMS Pages"
 
     # 3. Pagination
     if re.search(r'/page/\d+', url):
@@ -33,18 +33,19 @@ def categorize_url(url, us_cities):
     if re.search(r'/agent|/team', url):
         return "Agent Pages"
 
-  # 6. Property Pages
-    if re.search(r'/homes-for-sale|/home-for-sale|/properties|/property|/listings|/rentals', url):
+    # 5. Property Pages
+    if re.search(r'/properties|/property|/listings|/rentals', url) and not re.search(r'/page', url):
         return "Property Pages"
-    # 7. Parameters
+
+    # 6. Parameters
     if re.search(r'\?.+=', url):
         return "Parameters"
 
-    # 8. CMS Pages (Contact, Testimonials, About, etc.)
+    # 7. CMS Pages (Contact, Testimonials, About, etc.)
     if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
         return "CMS Pages"
 
-    # 9. Neighborhood Pages (Detect City Names)
+    # 8. Neighborhood Pages (Detect City Names)
     if (
         any(city in url for city in us_cities) and
         not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
