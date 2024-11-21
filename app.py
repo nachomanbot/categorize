@@ -25,8 +25,6 @@ def categorize_url(url, us_cities):
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
         return "CMS Pages"
 
-
-
     # 3. Pagination
     if re.search(r'/page/\d+', url):
         return "Pagination"
@@ -35,13 +33,15 @@ def categorize_url(url, us_cities):
     if re.search(r'/agent|/team', url):
         return "Agent Pages"
 
+  # 6. Property Pages
+    if re.search(r'/homes-for-sale|/home-for-sale|/properties|/property|/listings|/rentals', url):
+        return "Property Pages"
+        
     # 5. MLS Pages
     if re.search(r'/homes-for-sale|/home-for-sale', url) and not re.search(r'/[^/]+/[^/]+', url):
         return "MLS Pages"
 
-    # 6. Property Pages
-    if re.search(r'/homes-for-sale|/home-for-sale|/properties|/property|/listings|/rentals', url):
-        return "Property Pages"
+
 
     # 7. Parameters
     if re.search(r'\?.+=', url):
