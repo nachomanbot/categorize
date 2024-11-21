@@ -1,60 +1,91 @@
-import re
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import re
 
-# Streamlit App Setup
-st.title("Enhanced Page Categorization Tool ⚡")
-st.markdown("Upload your URL list, and the tool will categorize the pages into predefined categories.")
+# Set the page title
+st.title("⚡ Page Categorization Tool")
+
+st.markdown("""
+### **What This Tool Does**
+This tool categorizes website pages into predefined categories such as CMS Pages, Blog Pages, MLS Pages, and more, based on URL patterns and rules.
+
+### **Categories**
+- **Agent Pages**
+- **Blog Pages**
+- **CMS Pages**
+- **Development Pages**
+- **Neighborhood Pages**
+- **Property Pages**
+- **Press Pages**
+- **MLS Pages**
+- **Blog Filters** (Tag pages and category pages)
+- **Pagination**
+- **Pages with Parameters**
+- **Duplicates** (hashes, tokens, etc.)
+- **Long URLs**
+""")
 
 # File upload
-uploaded_file = st.file_uploader("Upload your CSV file with a column named 'URL'", type=["csv"])
+uploaded_file = st.file_uploader("Upload a CSV file containing URLs", type="csv")
 
 if uploaded_file:
-    # Load the data
+    # Load the uploaded CSV
     pages_df = pd.read_csv(uploaded_file)
-    if 'URL' not in pages_df.columns:
-        st.error("The uploaded file must contain a column named 'URL'.")
+    
+    # Check if the required "URL" column exists
+    if "URL" not in pages_df.columns:
+        st.error("The uploaded file must contain a 'URL' column.")
     else:
-        # Categorization logic
-        def categorize_url(url):
-            # Blog Filters
-            if re.search(r"/tag/|/category/|/author/|\?\w+=|/\d{4}/\d{2}/", url):
-                return "Blog Filters"
-            # Pagination
-            elif re.search(r"page=\d|/page/\d", url, re.IGNORECASE):
-                return "Pagination"
-            # Parameterized URLs
-            elif re.search(r"\?.+", url):
-                return "Pages with Parameters"
-            # Property Pages
-            elif re.search(r"/homes-for-sale/|/listing/", url):
-                return "Property Pages"
-            # MLS Pages
-            elif re.search(r"/property-search/|/search/results/|/homes-for-sale/[^/]+$", url):
-                return "MLS Pages"
-            # Agent Pages
-            elif re.search(r"/agent/|/realtor/", url, re.IGNORECASE):
-                return "Agent Pages"
-            # Blog Pages
-            elif re.search(r"/blog/|/post/", url, re.IGNORECASE):
-                return "Blog Pages"
-            # CMS Pages
-            elif re.search(r"/about|/contact|/privacy|/tos|/terms|/faq|/home-value|/reviews", url, re.IGNORECASE):
+        st.success("File uploaded successfully!")
+
+        # Define categorization rules
+        def categorize_page(url):
+            # Rules for categories
+            if url == "/" or url.endswith("/home") or re.search(r"^https?://[^/]+/$", url):
                 return "CMS Pages"
-            # Default category: Uncategorized
+            if re.search(r"/about|/contact|/resources|/privacy|/tos|/reviews", url, re.IGNORECASE):
+                return "CMS Pages"
+            if re.search(r"/blog/|/posts/|/articles/", url, re.IGNORECASE):
+                return "Blog Pages"
+            if re.search(r"/tag/|/category/", url, re.IGNORECASE):
+                return "Blog Filters"
+            if re.search(r"/agent|/team|/staff|/profile", url, re.IGNORECASE):
+                return "Agent Pages"
+            if re.search(r"/development|/projects", url, re.IGNORECASE):
+                return "Development Pages"
+            if re.search(r"/neighborhoods|/community", url, re.IGNORECASE):
+                return "Neighborhood Pages"
+            if re.search(r"/property|/homes-for-sale|/listing|/properties", url, re.IGNORECASE):
+                if len(url.split('/')) > 4:
+                    return "Property Pages"
+                else:
+                    return "MLS Pages"
+            if re.search(r"/press|/news", url, re.IGNORECASE):
+                return "Press Pages"
+            if re.search(r"page=\d+|/page/", url, re.IGNORECASE):
+                return "Pagination"
+            if re.search(r"\?|&", url):
+                return "Pages with Parameters"
+            if len(url) > 100:
+                return "Long URLs"
+            if re.search(r"#|token|session|sid", url, re.IGNORECASE):
+                return "Duplicates: Hashes/Tokens"
+            
             return "Uncategorized"
 
-        # Apply categorization
-        pages_df["Category"] = pages_df["URL"].apply(categorize_url)
+        # Apply the categorization function
+        pages_df['Category'] = pages_df['URL'].apply(categorize_page)
 
-        # Show results
-        st.success("Categorization complete!")
-        st.write(pages_df)
+        # Display the categorized results
+        st.header("Categorized Pages")
+        st.dataframe(pages_df)
 
-        # Download button
+        # Download the results
         st.download_button(
-            label="Download Categorized Results as CSV",
+            label="Download Categorized Pages",
             data=pages_df.to_csv(index=False),
             file_name="categorized_pages.csv",
             mime="text/csv",
         )
+
+        st.success("Categorization completed! You can download the categorized file.")
