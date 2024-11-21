@@ -1,3 +1,14 @@
+import pandas as pd
+import re
+import streamlit as st
+
+# Load US cities as a static resource
+@st.cache_data
+def load_us_cities():
+    us_cities_path = "us_cities.csv"
+    us_cities = pd.read_csv(us_cities_path)['CITY'].str.lower().tolist()
+    return us_cities
+
 def categorize_url(url, us_cities):
     url = url.lower()
 
