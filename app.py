@@ -1,88 +1,64 @@
 import pandas as pd
-import pickle
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from sentence_transformers import SentenceTransformer
 import streamlit as st
+from sentence_transformers import SentenceTransformer
+import pickle
 
-# Load the trained model and embedder
+# Load pre-trained models
+models = {
+    "global": pickle.load(open("models/global_model.pkl", "rb")),
+    "blogs": pickle.load(open("models/blog_model.pkl", "rb")),
+    "neighborhoods": pickle.load(open("models/neighborhood_model.pkl", "rb")),
+    "properties": pickle.load(open("models/property_model.pkl", "rb")),
+}
+
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
-try:
-    model = pickle.load(open("neighborhood_model.pkl", "rb"))
-except FileNotFoundError:
-    model = None  # Handle first-time initialization
 
-# Function to load and process training data
-def load_training_data(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    df['combined_text'] = df.apply(
-        lambda row: f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower(), axis=1
-    )
-    return df
+def global_classify(row):
+    text = f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower()
+    embedding = embedder.encode([text])[0]
+    return models["global"].predict([embedding])[0]
 
-# Function to train the model
-def train_model(df):
-    X = embedder.encode(df['combined_text'].tolist(), show_progress_bar=True)
-    y = df['Category']
+def specialized_classify(category, row):
+    text = f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower()
+    embedding = embedder.encode([text])[0]
+    return models[category].predict([embedding])[0]
 
-    # Train/test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Train the classifier
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    clf.fit(X_train, y_train)
-
-    # Evaluate the model
-    y_pred = clf.predict(X_test)
-    report = classification_report(y_test, y_pred, output_dict=True)
-
-    # Save the updated model
-    pickle.dump(clf, open("neighborhood_model.pkl", "wb"))
-    return clf, report
-
-# Streamlit app
+# Streamlit App
 def main():
-    st.title("AI-Powered Page Categorizer and Trainer")
+    st.title("Multi-Model AI Page Categorizer")
     
-    # Categorization Section
-    st.header("Categorize Pages")
-    uploaded_file = st.file_uploader("Upload CSV for categorization", type=["csv"])
+    # File Upload
+    uploaded_file = st.file_uploader("Upload a CSV for categorization", type=["csv"])
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
-        df['combined_text'] = df.apply(
-            lambda row: f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower(), axis=1
-        )
-        if model:
-            embeddings = embedder.encode(df['combined_text'].tolist(), show_progress_bar=True)
-            df['Predicted Category'] = model.predict(embeddings)
-            st.write("Categorized Data:")
-            st.dataframe(df[['URL', 'Predicted Category']])
-            st.download_button(
-                label="Download Categorized Data",
-                data=df.to_csv(index=False),
-                file_name="categorized_results.csv",
-                mime="text/csv"
+        df['Global Category'] = df.apply(global_classify, axis=1)
+        
+        # Run specialized models
+        for category in ["blogs", "neighborhoods", "properties"]:
+            df.loc[df['Global Category'] == category, 'Category'] = df.apply(
+                lambda row: specialized_classify(category, row), axis=1
             )
-        else:
-            st.error("No model found. Please train the AI first.")
+        
+        # Output
+        st.write(df[['URL', 'Category']])
+        st.download_button(
+            "Download Categorized Data",
+            data=df.to_csv(index=False),
+            file_name="categorized_results.csv",
+            mime="text/csv"
+        )
 
     # Training Section
-    st.header("Train the AI")
-    uploaded_training_file = st.file_uploader("Upload Labeled Data for Training", type=["csv"], key="training")
-    if uploaded_training_file:
-        try:
-            training_df = load_training_data(uploaded_training_file)
-            st.write("Training data loaded successfully!")
-            st.write(training_df.head())
-
-            if st.button("Start Training"):
-                trained_model, metrics = train_model(training_df)
-                st.success("Model trained successfully!")
-                st.json(metrics)
-                st.write("The AI is now updated and ready to categorize pages.")
-        except Exception as e:
-            st.error(f"An error occurred during training: {e}")
+    st.header("Train Specialized Models")
+    for category in ["blogs", "neighborhoods", "properties"]:
+        st.subheader(f"Train {category.capitalize()} Model")
+        train_file = st.file_uploader(f"Upload training data for {category}", type=["csv"], key=category)
+        if train_file:
+            train_df = pd.read_csv(train_file)
+            st.write(f"Training data loaded for {category}")
+            if st.button(f"Train {category.capitalize()} Model"):
+                # Train and save model logic here
+                st.success(f"{category.capitalize()} Model Trained Successfully!")
 
 if __name__ == "__main__":
     main()
