@@ -78,22 +78,13 @@ def main():
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded_file is not None:
         try:
-            # Attempt to inspect the file structure
-            raw_data = uploaded_file.read()
-            if not raw_data:
-                st.error("Uploaded file is empty.")
-                return
-
-            st.write("Raw file content (first 500 bytes):")
-            st.code(raw_data[:500])
-
-            # Try reading the file into a DataFrame
+            # Attempt to read the file into a DataFrame
             try:
-                df = pd.read_csv(uploaded_file, encoding="utf-8", header=None)
+                df = pd.read_csv(uploaded_file, encoding="utf-8")
             except UnicodeDecodeError:
-                df = pd.read_csv(uploaded_file, encoding="iso-8859-1", header=None)
+                df = pd.read_csv(uploaded_file, encoding="iso-8859-1")
 
-            # Assign headers if they are missing
+            # Handle missing headers
             if len(df.columns) >= 3:
                 df.columns = ["url", "title", "meta_description"]
             elif len(df.columns) == 2:
