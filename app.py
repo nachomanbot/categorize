@@ -122,7 +122,7 @@ def main():
             # Show results and allow download
             st.write("Categorized URLs:", output_df)
             st.download_button(
-                label="Download Categorized CSV",
+                label="Download Results as CSV",
                 data=output_df.to_csv(index=False),
                 file_name="categorized_urls.csv",
                 mime="text/csv"
