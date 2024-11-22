@@ -10,7 +10,7 @@ def load_us_cities():
     return us_cities
 
 # Define the categorization function
-def categorize_url(url, us_cities, title, meta_description):
+def categorize_url(url, us_cities, title="", meta_description=""):
     url = url.lower()
     title = title.lower() if pd.notna(title) else ""
     meta_description = meta_description.lower() if pd.notna(meta_description) else ""
@@ -72,7 +72,7 @@ def categorize_url(url, us_cities, title, meta_description):
 # Main function
 def main():
     st.title("Categorizer 2.0")
-    st.write("Upload a CSV file with columns 'URL', 'Title', and 'Meta Description' for categorization.")
+    st.write("Upload a CSV file with at least a column named 'URL' for categorization. Optional columns: 'Title' and 'Meta Description'.")
 
     # File uploader
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -84,14 +84,32 @@ def main():
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding="iso-8859-1")
 
-            if not all(col in df.columns for col in ["URL", "Title", "Meta Description"]):
-                st.error("The uploaded file must have columns: 'URL', 'Title', and 'Meta Description'.")
+            # Check if the file is empty
+            if df.empty:
+                st.error("The uploaded file is empty. Please upload a valid CSV file.")
                 return
+
+            # Normalize column names by stripping whitespace and converting to lowercase
+            df.columns = df.columns.str.strip().str.lower()
+
+            # Ensure required column exists
+            if "url" not in df.columns:
+                st.error("The uploaded file must have a column named 'URL'.")
+                return
+
+            # Handle missing optional columns
+            if "title" not in df.columns:
+                df["title"] = ""
+            if "meta description" not in df.columns:
+                df["meta description"] = ""
 
             us_cities = load_us_cities()
 
             # Categorize URLs
-            df["Category"] = df.apply(lambda row: categorize_url(row["URL"], us_cities, row["Title"], row["Meta Description"]), axis=1)
+            df["Category"] = df.apply(
+                lambda row: categorize_url(row["url"], us_cities, row["title"], row["meta description"]),
+                axis=1
+            )
 
             # Show results and allow download
             st.write("Categorized URLs:", df)
@@ -101,6 +119,8 @@ def main():
                 file_name="categorized_urls.csv",
                 mime="text/csv"
             )
+        except pd.errors.EmptyDataError:
+            st.error("No data found in the file. Please upload a valid CSV.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
