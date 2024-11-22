@@ -106,11 +106,14 @@ def main():
                 axis=1
             )
 
+            # Filter only URL and Category columns for output
+            output_df = df[["url", "Category"]]
+
             # Show results and allow download
-            st.write("Categorized URLs:", df)
+            st.write("Categorized URLs:", output_df)
             st.download_button(
                 label="Download Categorized CSV",
-                data=df.to_csv(index=False),
+                data=output_df.to_csv(index=False),
                 file_name="categorized_urls.csv",
                 mime="text/csv"
             )
