@@ -72,7 +72,7 @@ def categorize_url(url, us_cities, title="", meta_description=""):
 # Main function
 def main():
     st.title("Categorizer 2.0")
-    st.write("Upload a CSV file with three columns: URL, Title, and Meta Description (headers optional).")
+    st.write("Upload a CSV file. If no headers, the first column will be treated as URLs, second as Title, and third as Meta Description.")
 
     # File uploader
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -84,18 +84,15 @@ def main():
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding="iso-8859-1", header=None)
 
-            # Check if the file has at least one column
-            if df.shape[1] < 1:
-                st.error("The uploaded file must have at least one column for URLs.")
-                return
-
-            # Assign columns to URL, Title, and Meta Description
-            df.columns = ["url", "title", "meta_description"][:df.shape[1]]
-
-            # Fill missing optional columns
-            if "title" not in df.columns:
+            # If headers are not present, assume first column is URL, second is Title, third is Meta Description
+            if len(df.columns) >= 3:
+                df.columns = ["url", "title", "meta_description"]
+            elif len(df.columns) == 2:
+                df.columns = ["url", "title"]
+                df["meta_description"] = ""
+            elif len(df.columns) == 1:
+                df.columns = ["url"]
                 df["title"] = ""
-            if "meta_description" not in df.columns:
                 df["meta_description"] = ""
 
             us_cities = load_us_cities()
