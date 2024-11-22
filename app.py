@@ -11,9 +11,9 @@ def load_us_cities():
 
 # Define the categorization function
 def categorize_url(row, us_cities):
-    url = row.get("URL", "").lower()
-    title = row.get("Title", "").lower() if row.get("Title") else ""
-    meta_description = row.get("Meta Description", "").lower() if row.get("Meta Description") else ""
+    url = str(row["URL"]).lower() if not pd.isna(row["URL"]) else ""
+    title = str(row["Title"]).lower() if "Title" in row and not pd.isna(row["Title"]) else ""
+    meta_description = str(row["Meta Description"]).lower() if "Meta Description" in row and not pd.isna(row["Meta Description"]) else ""
 
     # 1. Blog Filters
     if re.search(r'/tag|/category', url):
@@ -68,7 +68,7 @@ def main():
         try:
             df = pd.read_csv(uploaded_file, encoding="ISO-8859-1")
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"An error occurred while reading the file: {e}")
             return
 
         # Ensure at least the "URL" column exists
