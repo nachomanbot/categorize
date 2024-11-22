@@ -11,9 +11,9 @@ def load_us_cities():
 
 # Define the categorization function
 def categorize_url(row, us_cities):
-    url = row.get("URL", "").lower()
-    title = row.get("Title", "").lower() if row.get("Title") else ""
-    meta_description = row.get("Meta Description", "").lower() if row.get("Meta Description") else ""
+    url = str(row["URL"]).lower() if "URL" in row and pd.notnull(row["URL"]) else ""
+    title = str(row["Title"]).lower() if "Title" in row and pd.notnull(row["Title"]) else ""
+    meta_description = str(row["Meta Description"]).lower() if "Meta Description" in row and pd.notnull(row["Meta Description"]) else ""
 
     # 0. Homepage (Prioritized)
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
