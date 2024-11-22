@@ -9,15 +9,23 @@ def load_us_cities():
     us_cities = pd.read_csv(us_cities_path)['CITY'].str.lower().tolist()
     return us_cities
 
-# Define the categorization function
-def categorize_url(url, us_cities, title="", meta_description=""):
-    url = str(url).lower() if pd.notna(url) else ""
-    title = str(title).lower() if pd.notna(title) else ""
-    meta_description = str(meta_description).lower() if pd.notna(meta_description) else ""
+# Flexible CSV loader
+def load_csv(uploaded_file):
+    try:
+        # Try loading with default encoding
+        return pd.read_csv(uploaded_file)
+    except UnicodeDecodeError:
+        # Fallback for alternative encoding
+        return pd.read_csv(uploaded_file, encoding="ISO-8859-1")
+    except Exception as e:
+        st.error(f"Error loading file: {e}")
+        return None
 
-    # 0. Homepage (Prioritized)
-    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
-        return "CMS Pages"
+# Define the categorization function
+def categorize_url(url, us_cities):
+    if not isinstance(url, str):
+        return "Invalid URL"
+    url = url.lower()
 
     # 1. Blog Filters
     if re.search(r'/tag|/category', url):
@@ -26,111 +34,73 @@ def categorize_url(url, us_cities, title="", meta_description=""):
     # 2. Blog Pages
     if re.search(r'/blog', url) and not re.search(r'/page|/author', url):
         return "Blog Pages"
-    if "blog" in title or "article" in title:
-        return "Blog Pages"
-    if "blog" in meta_description or "article" in meta_description:
-        return "Blog Pages"
 
-    # 3. Pagination
+    # 3. Property Pages
+    if re.search(r'/properties|/property|/homes-for-sale|/rent|/listings|/rentals', url) and not re.search(r'/page', url):
+        return "Property Pages"
+
+    # 4. Pagination
     if re.search(r'/page/\d+', url):
         return "Pagination"
 
-    # 4. Agent Pages
+    # 5. CMS Pages
+    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
+        return "CMS Pages"
+
+    # 6. Agent Pages
     if re.search(r'/agent|/team', url):
         return "Agent Pages"
 
-    # 5. Property Pages
-    if re.search(r'/properties|/property|/homes-for-sale|/rent|/listings|/rentals', url) and not re.search(r'/page', url):
-        return "Property Pages"
-    if "home for sale" in title or "property" in title:
-        return "Property Pages"
-    if "find your home" in meta_description or "real estate" in meta_description:
-        return "Property Pages"
-
-    # 6. Parameters
-    if re.search(r'\?.+=', url):
-        return "Parameters"
-
-    # 7. CMS Pages (Contact, Testimonials, About, etc.)
-    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url):
-        return "CMS Pages"
-    if "about" in title or "contact" in title:
-        return "CMS Pages"
-    if "about us" in meta_description or "contact us" in meta_description:
-        return "CMS Pages"
-
-    # 8. Neighborhood Pages (Detect City Names)
+    # 7. Neighborhood Pages
     if (
         any(city in url for city in us_cities) and
-        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
+        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials', url)
     ):
         return "Neighborhood Pages"
 
-    # Fallback to CMS Pages if uncategorized
+    # Fallback
     return "CMS Pages"
 
 # Main function
 def main():
     st.title("Categorizer 2.0")
-    st.write("Upload a CSV file. If no headers, the first column will be treated as URLs, second as Title, and third as Meta Description.")
 
-    # File uploader
+    # Upload the file
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded_file is not None:
-        try:
-            # Display raw file content for debugging
-            raw_data = uploaded_file.getvalue().decode("utf-8", errors="replace")
-            st.text("Raw File Content:")
-            st.text(raw_data[:500])  # Display first 500 characters of the raw content
+        df = load_csv(uploaded_file)
 
-            # Attempt to read the file into a DataFrame
-            try:
-                df = pd.read_csv(uploaded_file, encoding="utf-8")
-            except UnicodeDecodeError:
-                df = pd.read_csv(uploaded_file, encoding="iso-8859-1")
-
-            # Check if the DataFrame has any content
-            if df.empty:
-                st.error("The file is empty or contains no valid data.")
-                return
-
-            # Handle missing headers
-            if len(df.columns) >= 3:
-                df.columns = ["url", "title", "meta_description"]
-            elif len(df.columns) == 2:
-                df.columns = ["url", "title"]
-                df["meta_description"] = ""
-            elif len(df.columns) == 1:
-                df.columns = ["url"]
-                df["title"] = ""
-                df["meta_description"] = ""
-
-            st.write("Data preview:")
-            st.dataframe(df.head())
-
-            us_cities = load_us_cities()
-
-            # Categorize URLs
-            df["Category"] = df.apply(
-                lambda row: categorize_url(row["url"], us_cities, row.get("title", ""), row.get("meta_description", "")),
-                axis=1
-            )
-
-            # Filter only URL and Category columns for output
-            output_df = df[["url", "Category"]]
-
-            # Show results and allow download
-            st.write("Categorized URLs:", output_df)
-            st.download_button(
-                label="Download Results as CSV",
-                data=output_df.to_csv(index=False),
-                file_name="categorized_urls.csv",
-                mime="text/csv"
-            )
-        except pd.errors.EmptyDataError:
+        if df is None or df.empty:
             st.error("No data found in the file. Please upload a valid CSV.")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+            return
+
+        st.write("Preview of the uploaded file:")
+        st.dataframe(df.head())
+
+        # Ensure correct column mapping
+        if len(df.columns) < 3:
+            st.warning("File must have at least 3 columns: URL, Title, and Meta Description.")
+            return
+
+        # Rename columns for consistency
+        df.columns = ["url", "title", "meta_description"]
+
+        us_cities = load_us_cities()
+
+        # Categorize URLs
+        df["category"] = df["url"].apply(lambda url: categorize_url(url, us_cities))
+
+        # Output results
+        st.write("Categorized URLs:")
+        st.dataframe(df[["url", "category"]])
+
+        # Download button
+        st.download_button(
+            label="Download Categorized CSV",
+            data=df[["url", "category"]].to_csv(index=False),
+            file_name="categorized_urls.csv",
+            mime="text/csv",
+        )
 
 # Run the app
 if __name__ == "__main__":
