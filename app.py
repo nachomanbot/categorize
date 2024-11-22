@@ -72,7 +72,7 @@ def categorize_url(url, us_cities, title="", meta_description=""):
 # Main function
 def main():
     st.title("Categorizer 2.0")
-    st.write("Upload a CSV file with at least a column named 'URL' for categorization. Optional columns: 'Title' and 'Meta Description'.")
+    st.write("Upload a CSV file with three columns: URL, Title, and Meta Description (headers optional).")
 
     # File uploader
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -80,34 +80,29 @@ def main():
         try:
             # Attempt to read the file with utf-8 encoding, fallback to iso-8859-1 if it fails
             try:
-                df = pd.read_csv(uploaded_file, encoding="utf-8")
+                df = pd.read_csv(uploaded_file, encoding="utf-8", header=None)
             except UnicodeDecodeError:
-                df = pd.read_csv(uploaded_file, encoding="iso-8859-1")
+                df = pd.read_csv(uploaded_file, encoding="iso-8859-1", header=None)
 
-            # Check if the file is empty
-            if df.empty:
-                st.error("The uploaded file is empty. Please upload a valid CSV file.")
+            # Check if the file has at least three columns
+            if df.shape[1] < 1:
+                st.error("The uploaded file must have at least one column for URLs.")
                 return
 
-            # Normalize column names by stripping whitespace and converting to lowercase
-            df.columns = df.columns.str.strip().str.lower()
+            # Assign columns to URL, Title, and Meta Description
+            df.columns = ["url", "title", "meta_description"][:df.shape[1]]
 
-            # Ensure required column exists
-            if "url" not in df.columns:
-                st.error("The uploaded file must have a column named 'URL'.")
-                return
-
-            # Handle missing optional columns
+            # Fill missing optional columns
             if "title" not in df.columns:
                 df["title"] = ""
-            if "meta description" not in df.columns:
-                df["meta description"] = ""
+            if "meta_description" not in df.columns:
+                df["meta_description"] = ""
 
             us_cities = load_us_cities()
 
             # Categorize URLs
             df["Category"] = df.apply(
-                lambda row: categorize_url(row["url"], us_cities, row["title"], row["meta description"]),
+                lambda row: categorize_url(row["url"], us_cities, row.get("title", ""), row.get("meta_description", "")),
                 axis=1
             )
 
