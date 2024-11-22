@@ -78,13 +78,22 @@ def main():
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded_file is not None:
         try:
-            # Attempt to read the file with utf-8 encoding, fallback to iso-8859-1 if it fails
+            # Attempt to inspect the file structure
+            raw_data = uploaded_file.read()
+            if not raw_data:
+                st.error("Uploaded file is empty.")
+                return
+
+            st.write("Raw file content (first 500 bytes):")
+            st.code(raw_data[:500])
+
+            # Try reading the file into a DataFrame
             try:
                 df = pd.read_csv(uploaded_file, encoding="utf-8", header=None)
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding="iso-8859-1", header=None)
 
-            # If headers are not present, assume first column is URL, second is Title, third is Meta Description
+            # Assign headers if they are missing
             if len(df.columns) >= 3:
                 df.columns = ["url", "title", "meta_description"]
             elif len(df.columns) == 2:
@@ -94,6 +103,9 @@ def main():
                 df.columns = ["url"]
                 df["title"] = ""
                 df["meta_description"] = ""
+
+            st.write("Data preview:")
+            st.dataframe(df.head())
 
             us_cities = load_us_cities()
 
