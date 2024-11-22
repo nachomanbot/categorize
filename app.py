@@ -1,104 +1,88 @@
 import pandas as pd
-import re
+import pickle
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from sentence_transformers import SentenceTransformer
 import streamlit as st
 
-# Load US cities as a static resource
-@st.cache_data
-def load_us_cities():
-    us_cities_path = "us_cities.csv"
-    us_cities = pd.read_csv(us_cities_path)['CITY'].str.lower().tolist()
-    return us_cities
+# Load the trained model and embedder
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
+try:
+    model = pickle.load(open("neighborhood_model.pkl", "rb"))
+except FileNotFoundError:
+    model = None  # Handle first-time initialization
 
-# Define the categorization function
-def categorize_url(row, us_cities):
-    url = str(row["URL"]).lower() if "URL" in row and pd.notnull(row["URL"]) else ""
-    title = str(row["Title"]).lower() if "Title" in row and pd.notnull(row["Title"]) else ""
-    meta_description = str(row["Meta Description"]).lower() if "Meta Description" in row and pd.notnull(row["Meta Description"]) else ""
+# Function to load and process training data
+def load_training_data(uploaded_file):
+    df = pd.read_csv(uploaded_file)
+    df['combined_text'] = df.apply(
+        lambda row: f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower(), axis=1
+    )
+    return df
 
-    # 0. Homepage (Prioritized)
-    if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
-        return "CMS Pages"
+# Function to train the model
+def train_model(df):
+    X = embedder.encode(df['combined_text'].tolist(), show_progress_bar=True)
+    y = df['Category']
 
-    # 1. Blog Filters
-    if re.search(r'/tag|/category', url):
-        return "Blog Filters"
+    # Train/test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # 2. Blog Pages
-    if re.search(r'/blog', url) and not re.search(r'/page|/author', url):
-        return "Blog Pages"
+    # Train the classifier
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf.fit(X_train, y_train)
 
-    # 3. Pagination
-    if re.search(r'/page/\d+', url):
-        return "Pagination"
+    # Evaluate the model
+    y_pred = clf.predict(X_test)
+    report = classification_report(y_test, y_pred, output_dict=True)
 
-    # 4. Agent Pages (Prioritized Above CMS)
-    if re.search(r'/agent|/team', url):
-        return "Agent Pages"
+    # Save the updated model
+    pickle.dump(clf, open("neighborhood_model.pkl", "wb"))
+    return clf, report
 
-    # 5. Property Pages
-    if re.search(r'/properties|/property|/homes-for-sale|/rent|/listings|/rentals', url) and not re.search(r'/page', url):
-        return "Property Pages"
-
-    # 6. Parameters
-    if re.search(r'\?.+=', url):
-        return "Parameters"
-
-    # 7. Neighborhood Pages (Detect City Names)
-    if (
-        any(city in url for city in us_cities) and
-        not re.search(r'/blog|/properties|/property|/listings|/agent|/team|/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url)
-    ):
-        return "Neighborhood Pages"
-
-    # 8. CMS Pages (Refined to Exclude Other Categories)
-    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url) and not re.search(r'/agent|/team|/property|/properties|/listings|/rentals|/homes-for-sale|/blog|/tag|/category', url):
-        return "CMS Pages"
-
-    # Fallback to CMS Pages if uncategorized
-    return "CMS Pages"
-
-# Function to load the uploaded CSV file
-def load_csv(uploaded_file):
-    try:
-        df = pd.read_csv(uploaded_file, encoding="ISO-8859-1")
-        if df.empty:
-            st.error("Uploaded file is empty. Please upload a valid CSV.")
-            st.stop()
-        return df
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        st.stop()
-
-# Main function
+# Streamlit app
 def main():
-    st.title("Categorizer 2.0")
-    st.write("Upload a CSV file with at least a URL column. Additional columns like Title and Meta Description are optional.")
-
-    # File uploader
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    st.title("AI-Powered Page Categorizer and Trainer")
+    
+    # Categorization Section
+    st.header("Categorize Pages")
+    uploaded_file = st.file_uploader("Upload CSV for categorization", type=["csv"])
     if uploaded_file is not None:
-        df = load_csv(uploaded_file)
-
-        # Flexible column handling
-        if "URL" not in df.columns:
-            st.error("The uploaded file must have a 'URL' column.")
-            return
-
-        us_cities = load_us_cities()
-
-        # Categorize URLs
-        df["Category"] = df.apply(lambda row: categorize_url(row, us_cities), axis=1)
-
-        # Show results and allow download
-        st.write("Categorized URLs:")
-        st.write(df[["URL", "Category"]])  # Only show URL and Category columns
-        st.download_button(
-            label="Download Results as CSV",
-            data=df[["URL", "Category"]].to_csv(index=False),
-            file_name="categorized_urls.csv",
-            mime="text/csv"
+        df = pd.read_csv(uploaded_file)
+        df['combined_text'] = df.apply(
+            lambda row: f"{row['URL']} {row.get('Title', '')} {row.get('Meta Description', '')}".lower(), axis=1
         )
+        if model:
+            embeddings = embedder.encode(df['combined_text'].tolist(), show_progress_bar=True)
+            df['Predicted Category'] = model.predict(embeddings)
+            st.write("Categorized Data:")
+            st.dataframe(df[['URL', 'Predicted Category']])
+            st.download_button(
+                label="Download Categorized Data",
+                data=df.to_csv(index=False),
+                file_name="categorized_results.csv",
+                mime="text/csv"
+            )
+        else:
+            st.error("No model found. Please train the AI first.")
 
-# Run the app
+    # Training Section
+    st.header("Train the AI")
+    uploaded_training_file = st.file_uploader("Upload Labeled Data for Training", type=["csv"], key="training")
+    if uploaded_training_file:
+        try:
+            training_df = load_training_data(uploaded_training_file)
+            st.write("Training data loaded successfully!")
+            st.write(training_df.head())
+
+            if st.button("Start Training"):
+                trained_model, metrics = train_model(training_df)
+                st.success("Model trained successfully!")
+                st.json(metrics)
+                st.write("The AI is now updated and ready to categorize pages.")
+        except Exception as e:
+            st.error(f"An error occurred during training: {e}")
+
 if __name__ == "__main__":
     main()
