@@ -50,8 +50,8 @@ def categorize_url(row, us_cities):
     ):
         return "Neighborhood Pages"
 
-    # 8. CMS Pages (Exclude /agent and /team)
-    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url) and not re.search(r'/agent|/team', url):
+    # 8. CMS Pages (Refined to Exclude Other Categories)
+    if re.search(r'/contact|/about|/testimonials|/privacy|/tos|/terms|/resources|/sell|/purchase|/films', url) and not re.search(r'/agent|/team|/property|/properties|/listings|/rentals|/homes-for-sale|/blog|/tag|/category', url):
         return "CMS Pages"
 
     # Fallback to CMS Pages if uncategorized
