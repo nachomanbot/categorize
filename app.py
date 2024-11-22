@@ -77,24 +77,32 @@ def main():
     # File uploader
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-        if not all(col in df.columns for col in ["URL", "Title", "Meta Description"]):
-            st.error("The uploaded file must have columns: 'URL', 'Title', and 'Meta Description'.")
-            return
+        try:
+            # Attempt to read the file with utf-8 encoding, fallback to iso-8859-1 if it fails
+            try:
+                df = pd.read_csv(uploaded_file, encoding="utf-8")
+            except UnicodeDecodeError:
+                df = pd.read_csv(uploaded_file, encoding="iso-8859-1")
 
-        us_cities = load_us_cities()
+            if not all(col in df.columns for col in ["URL", "Title", "Meta Description"]):
+                st.error("The uploaded file must have columns: 'URL', 'Title', and 'Meta Description'.")
+                return
 
-        # Categorize URLs
-        df["Category"] = df.apply(lambda row: categorize_url(row["URL"], us_cities, row["Title"], row["Meta Description"]), axis=1)
+            us_cities = load_us_cities()
 
-        # Show results and allow download
-        st.write("Categorized URLs:", df)
-        st.download_button(
-            label="Download Categorized CSV",
-            data=df.to_csv(index=False),
-            file_name="categorized_urls.csv",
-            mime="text/csv"
-        )
+            # Categorize URLs
+            df["Category"] = df.apply(lambda row: categorize_url(row["URL"], us_cities, row["Title"], row["Meta Description"]), axis=1)
+
+            # Show results and allow download
+            st.write("Categorized URLs:", df)
+            st.download_button(
+                label="Download Categorized CSV",
+                data=df.to_csv(index=False),
+                file_name="categorized_urls.csv",
+                mime="text/csv"
+            )
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 # Run the app
 if __name__ == "__main__":
