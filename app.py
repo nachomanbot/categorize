@@ -11,9 +11,9 @@ def load_us_cities():
 
 # Define the categorization function
 def categorize_url(url, us_cities, title="", meta_description=""):
-    url = url.lower()
-    title = title.lower() if pd.notna(title) else ""
-    meta_description = meta_description.lower() if pd.notna(meta_description) else ""
+    url = str(url).lower() if pd.notna(url) else ""
+    title = str(title).lower() if pd.notna(title) else ""
+    meta_description = str(meta_description).lower() if pd.notna(meta_description) else ""
 
     # 0. Homepage (Prioritized)
     if url.endswith("/") or re.fullmatch(r"https?://[^/]+/?", url):
@@ -84,7 +84,7 @@ def main():
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding="iso-8859-1", header=None)
 
-            # Check if the file has at least three columns
+            # Check if the file has at least one column
             if df.shape[1] < 1:
                 st.error("The uploaded file must have at least one column for URLs.")
                 return
